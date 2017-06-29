@@ -612,6 +612,7 @@ make_header(State) ->
         log_btree=LogBtree,
         views=Views
     } = State,
+
     #mrheader{
         seq=Seq,
         purge_seq=PurgeSeq,
@@ -791,8 +792,8 @@ changes_ekey_opts(_StartSeq, #mrargs{end_key=EKey,
 reduced_external_size(Tree) ->
     case couch_btree:full_reduce(Tree) of
         {ok, {_, _, Size}} -> Size;
-        % return null for versions of the reduce function without Size
-        {ok, {_, _}} -> null
+        % return 0 for versions of the reduce function without Size
+        {ok, {_, _}} -> 0
     end.
 
 
@@ -811,10 +812,10 @@ calculate_external_size(Views) ->
     {ok, lists:foldl(SumFun, 0, Views)}.
 
 
-sum_btree_sizes(null, _) ->
-    null;
-sum_btree_sizes(_, null) ->
-    null;
+sum_btree_sizes(nil, _) ->
+    0;
+sum_btree_sizes(_, nil) ->
+    0;
 sum_btree_sizes(Size1, Size2) ->
     Size1 + Size2.
 
@@ -1152,5 +1153,5 @@ get_view_queries({Props}) ->
 
 kv_external_size(KVList, Reduction) ->
     lists:foldl(fun([[Key, _], Value], Acc) ->
-        size(term_to_binary(Key)) + size(term_to_binary(Value)) + Acc
-    end, size(term_to_binary(Reduction)), KVList).
+        ?term_size(Key) + ?term_size(Value) + Acc
+    end, ?term_size(Reduction), KVList).
