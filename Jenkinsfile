@@ -55,19 +55,21 @@ pipeline {
        their build results to each other during the build. Moving the
        build outside of the workdir should speed up the build process too,
        though it does mean we pollute /tmp whenever a build fails. */
+    /* Build packages on supported platforms using esl's erlang */
     stage('Test') {
       steps {
         parallel(centos6erlang183: {
           node(label: 'ubuntu') {
-            timeout(time: 45, unit: "MINUTES") {
+            timeout(time: 60, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/centos-6-erlang-18.3'
               withDockerContainer(image: 'couchdbdev/centos-6-erlang-18.3', args: '-e LD_LIBRARY_PATH=/usr/local/bin --user 0:0') {
                 sh '''
                   cwd=$(pwd)
-                  rm -rf /tmp/couchjslogs
-                  mkdir -p /tmp/couchjslogs
+                  rm -rf /tmp/couchjslogs && mkdir -p /tmp/couchjslogs
+
+                  # Build CouchDB from tarball
                   builddir=$(mktemp -d)
                   cd $builddir
                   tar -xf $cwd/apache-couchdb-*.tar.gz
@@ -75,14 +77,33 @@ pipeline {
                   ./configure --with-curl
                   make all
                   make check || (build-aux/logfile-uploader.py && false)
+
+                  # Build CouchDB packages
+                  cd $builddir
+                  git clone https://github.com/apache/couchdb-pkg
+                  mkdir couchdb
+                  cd couchdb
+                  cp $cwd/apache-couchdb-*.tar.gz .
+                  tar -xf apache-couchdb-*.tar.gz
+                  cd ../couchdb-pkg
+                  # centos only
+                  platform=centos6
+                  make $platform
+                  mkdir -p $cwd/pkgs/$platform
+                  # CentOS variant
+                  mv ~/rpmbuild/RPMS/x86_64/*rpm $cwd/pkgs/$platform || true
+
+                  # Cleanup
+                  cd $cwd && rm -rf $builddir
                 '''
               } // withDocker
             } // timeout
+            archiveArtifacts artifacts: 'pkgs/**', fingerprint: true
           } // node
         },
         centos7erlangdefault: {
           node(label: 'ubuntu') {
-            timeout(time: 30, unit: "MINUTES") {
+            timeout(time: 45, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/centos-7-erlang-default'
@@ -105,15 +126,16 @@ pipeline {
         },
         centos7erlang183: {
           node(label: 'ubuntu') {
-            timeout(time: 30, unit: "MINUTES") {
+            timeout(time: 60, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/centos-7-erlang-18.3'
               withDockerContainer(image: 'couchdbdev/centos-7-erlang-18.3', args: '-e LD_LIBRARY_PATH=/usr/local/bin --user 0:0') {
                 sh '''
                   cwd=$(pwd)
-                  rm -rf /tmp/couchjslogs
-                  mkdir -p /tmp/couchjslogs
+                  rm -rf /tmp/couchjslogs && mkdir -p /tmp/couchjslogs
+
+                  # Build CouchDB from tarball
                   builddir=$(mktemp -d)
                   cd $builddir
                   tar -xf $cwd/apache-couchdb-*.tar.gz
@@ -121,14 +143,33 @@ pipeline {
                   ./configure --with-curl
                   make all
                   make check || (build-aux/logfile-uploader.py && false)
+
+                  # Build CouchDB packages
+                  cd $builddir
+                  git clone https://github.com/apache/couchdb-pkg
+                  mkdir couchdb
+                  cd couchdb
+                  cp $cwd/apache-couchdb-*.tar.gz .
+                  tar -xf apache-couchdb-*.tar.gz
+                  cd ../couchdb-pkg
+                  # centos only
+                  platform=centos7
+                  make $platform
+                  mkdir -p $cwd/pkgs/$platform
+                  # CentOS variant
+                  mv ~/rpmbuild/RPMS/x86_64/*rpm $cwd/pkgs/$platform || true
+
+                  # Cleanup
+                  cd $cwd && rm -rf $builddir
                 '''
               } // withDocker
             } // timeout
+            archiveArtifacts artifacts: 'pkgs/**', fingerprint: true
           } // node
         },
         ubuntu1204erlang183: {
           node(label: 'ubuntu') {
-            timeout(time: 30, unit: "MINUTES") {
+            timeout(time: 45, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/ubuntu-12.04-erlang-18.3'
@@ -151,7 +192,7 @@ pipeline {
         },
         ubuntu1404erlangdefault: {
           node(label: 'ubuntu') {
-            timeout(time: 30, unit: "MINUTES") {
+            timeout(time: 45, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/ubuntu-14.04-erlang-default'
@@ -174,15 +215,16 @@ pipeline {
         },
         ubuntu1404erlang183: {
           node(label: 'ubuntu') {
-            timeout(time: 30, unit: "MINUTES") {
+            timeout(time: 60, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/ubuntu-14.04-erlang-18.3'
               withDockerContainer(image: 'couchdbdev/ubuntu-14.04-erlang-18.3', args: '--user 0:0') {
                 sh '''
                   cwd=$(pwd)
-                  rm -rf /tmp/couchjslogs
-                  mkdir -p /tmp/couchjslogs
+                  rm -rf /tmp/couchjslogs && mkdir -p /tmp/couchjslogs
+
+                  # Build CouchDB from tarball
                   builddir=$(mktemp -d)
                   cd $builddir
                   tar -xf $cwd/apache-couchdb-*.tar.gz
@@ -190,14 +232,34 @@ pipeline {
                   ./configure --with-curl
                   make all
                   make check || (build-aux/logfile-uploader.py && false)
+
+                  # Build CouchDB packages
+                  cd $builddir
+                  git clone https://github.com/apache/couchdb-pkg
+                  mkdir couchdb
+                  cd couchdb
+                  cp $cwd/apache-couchdb-*.tar.gz .
+                  tar -xf apache-couchdb-*.tar.gz
+                  cd ../couchdb-pkg
+                  # debian/ubuntu only
+                  sudo apt-get install -y libmozjs185-dev
+                  platform=$(lsb_release -cs)
+                  make $platform
+                  mkdir -p $cwd/pkgs/$platform
+                  # Ubuntu/Debian variant
+                  mv ../couchdb/*deb $cwd/pkgs/$platform || true
+
+                  # Cleanup
+                  cd $cwd && rm -rf $builddir
                 '''
               } // withDocker
             } // timeout
+            archiveArtifacts artifacts: 'pkgs/**', fingerprint: true
           } // node
         },
         ubuntu1604erlangdefault: {
           node(label: 'ubuntu') {
-            timeout(time: 30, unit: "MINUTES") {
+            timeout(time: 45, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/ubuntu-16.04-erlang-default'
@@ -220,15 +282,16 @@ pipeline {
         },
         ubuntu1604erlang183: {
           node(label: 'ubuntu') {
-            timeout(time: 30, unit: "MINUTES") {
+            timeout(time: 60, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/ubuntu-16.04-erlang-18.3'
               withDockerContainer(image: 'couchdbdev/ubuntu-16.04-erlang-18.3', args: '--user 0:0') {
                 sh '''
                   cwd=$(pwd)
-                  rm -rf /tmp/couchjslogs
-                  mkdir -p /tmp/couchjslogs
+                  rm -rf /tmp/couchjslogs && mkdir -p /tmp/couchjslogs
+
+                  # Build CouchDB from tarball
                   builddir=$(mktemp -d)
                   cd $builddir
                   tar -xf $cwd/apache-couchdb-*.tar.gz
@@ -236,14 +299,34 @@ pipeline {
                   ./configure --with-curl
                   make all
                   make check || (build-aux/logfile-uploader.py && false)
+
+                  # Build CouchDB packages
+                  cd $builddir
+                  git clone https://github.com/apache/couchdb-pkg
+                  mkdir couchdb
+                  cd couchdb
+                  cp $cwd/apache-couchdb-*.tar.gz .
+                  tar -xf apache-couchdb-*.tar.gz
+                  cd ../couchdb-pkg
+                  # debian/ubuntu only
+                  sudo apt-get install -y libmozjs185-dev
+                  platform=$(lsb_release -cs)
+                  make $platform
+                  mkdir -p $cwd/pkgs/$platform
+                  # Ubuntu/Debian variant
+                  mv ../couchdb/*deb $cwd/pkgs/$platform || true
+
+                  # Cleanup
+                  cd $cwd && rm -rf $builddir
                 '''
               } // withDocker
             } // timeout
+            archiveArtifacts artifacts: 'pkgs/**', fingerprint: true
           } // node
         },
         debian8erlangdefault: {
           node(label: 'ubuntu') {
-            timeout(time: 30, unit: "MINUTES") {
+            timeout(time: 45, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/debian-8-erlang-default'
@@ -266,15 +349,16 @@ pipeline {
         },
         debian8erlang183: {
           node(label: 'ubuntu') {
-            timeout(time: 30, unit: "MINUTES") {
+            timeout(time: 60, unit: "MINUTES") {
               sh 'rm *.tar.gz || true'
               unstash 'tarball'
               sh 'docker pull couchdbdev/debian-8-erlang-18.3'
               withDockerContainer(image: 'couchdbdev/debian-8-erlang-18.3', args: '--user 0:0') {
                 sh '''
                   cwd=$(pwd)
-                  rm -rf /tmp/couchjslogs
-                  mkdir -p /tmp/couchjslogs
+                  rm -rf /tmp/couchjslogs && mkdir -p /tmp/couchjslogs
+
+                  # Build CouchDB from tarball
                   builddir=$(mktemp -d)
                   cd $builddir
                   tar -xf $cwd/apache-couchdb-*.tar.gz
@@ -282,9 +366,29 @@ pipeline {
                   ./configure --with-curl
                   make all
                   make check || (build-aux/logfile-uploader.py && false)
+
+                  # Build CouchDB packages
+                  cd $builddir
+                  git clone https://github.com/apache/couchdb-pkg
+                  mkdir couchdb
+                  cd couchdb
+                  cp $cwd/apache-couchdb-*.tar.gz .
+                  tar -xf apache-couchdb-*.tar.gz
+                  cd ../couchdb-pkg
+                  # debian/ubuntu only
+                  sudo apt-get install -y libmozjs185-dev
+                  platform=$(lsb_release -cs)
+                  make $platform
+                  mkdir -p $cwd/pkgs/$platform
+                  # Ubuntu/Debian variant
+                  mv ../couchdb/*deb $cwd/pkgs/$platform || true
+
+                  # Cleanup
+                  cd $cwd && rm -rf $builddir
                 '''
               } // withDocker
             } // timeout
+            archiveArtifacts artifacts: 'pkgs/**', fingerprint: true
           } // node
         }
         ) // parallel
