@@ -1047,10 +1047,10 @@ get_user_reds(Reduction) ->
     element(2, Reduction).
 
 
-get_external_reds(Reduction) when tuple_size(Reduction) == 2 ->
+get_external_size_reds(Reduction) when tuple_size(Reduction) == 2 ->
     0;
 
-get_external_reds(Reduction) when tuple_size(Reduction) == 3 ->
+get_external_size_reds(Reduction) when tuple_size(Reduction) == 3 ->
     element(3, Reduction).
 
 
@@ -1066,7 +1066,7 @@ make_reduce_fun(Lang, ReduceFuns) ->
             ExtractFun = fun(Red, {CountsAcc0, URedsAcc0, ExtAcc0}) ->
                 CountsAcc = CountsAcc0 + get_count(Red),
                 URedsAcc = lists:append(URedsAcc0, [get_user_reds(Red)]),
-                ExtAcc = ExtAcc0 + get_external_reds(Red),
+                ExtAcc = ExtAcc0 + get_external_size_reds(Red),
                 {CountsAcc, URedsAcc, ExtAcc}
             end,
             {Counts, UReds, ExternalSize} = lists:foldl(ExtractFun,
