@@ -115,12 +115,14 @@ compare_compression_methods(DbName) ->
     compact_view(DbName),
     DbSizeNone = db_disk_size(DbName),
     ViewSizeNone = view_disk_size(DbName),
+    ViewExternalSizeNone = view_external_size(DbName),
 
     config:set("couchdb", "file_compression", "snappy", false),
     compact_db(DbName),
     compact_view(DbName),
     DbSizeSnappy = db_disk_size(DbName),
     ViewSizeSnappy = view_disk_size(DbName),
+    ViewExternalSizeSnappy = view_external_size(DbName),
 
     ?assert(DbSizeNone > DbSizeSnappy),
     ?assert(ViewSizeNone > ViewSizeSnappy),
@@ -139,9 +141,12 @@ compare_compression_methods(DbName) ->
     compact_view(DbName),
     DbSizeDeflate9 = db_disk_size(DbName),
     ViewSizeDeflate9 = view_disk_size(DbName),
+    ViewExternalSizeDeflate9 = view_external_size(DbName),
 
     ?assert(DbSizeDeflate1 > DbSizeDeflate9),
-    ?assert(ViewSizeDeflate1 > ViewSizeDeflate9).
+    ?assert(ViewSizeDeflate1 > ViewSizeDeflate9),
+    ?assert(ViewExternalSizeNone =:= ViewExternalSizeSnappy),
+    ?assert(ViewExternalSizeNone =:= ViewExternalSizeDeflate9).
 
 
 populate_db(_Db, NumDocs) when NumDocs =< 0 ->
@@ -193,8 +198,18 @@ view_disk_size(DbName) ->
     ok = couch_db:close(Db),
     active_size(Info).
 
+view_external_size(DbName) ->
+    {ok, Db} = couch_db:open_int(DbName, []),
+    {ok, DDoc} = couch_db:open_doc(Db, ?DDOC_ID, [ejson_body]),
+    {ok, Info} = couch_mrview:get_info(Db, DDoc),
+    ok = couch_db:close(Db),
+    external_size(Info).
+
 active_size(Info) ->
     couch_util:get_nested_json_value({Info}, [sizes, active]).
+
+external_size(Info) ->
+    couch_util:get_nested_json_value({Info}, [sizes, external]).
 
 wait_compaction(DbName, Kind, Line) ->
     WaitFun = fun() ->
