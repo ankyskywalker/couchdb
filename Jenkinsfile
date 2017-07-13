@@ -397,22 +397,29 @@ pipeline {
 
     stage('Publish') {
       when {
-        branch '*(master|2.0.x|2.1.x)'
+        expression { return env.BRANCH_NAME ==~ /master|2.0.x|2.1.x|jenkins-*/ }
       }
-      agent any
+      agent {
+        docker {
+          /* This image has the deb AND rpm repo tools installed in it */
+          image 'couchdbdev/debian-8-base'
+          /* We need the jenkins user mapped inside of the image */
+          args '-v /etc/passwd:/etc/passwd -v /etc/group:/etc/group'
+        }
+      }
       steps {
-        /* Push it somewhere useful other than Jenkins, maybe? */
-        /* echo 'Publishing tarball...'
-        unstash 'tarball' */
-        echo 'Triggering Debian .deb builds...'
-        echo 'Triggering Ubuntu .deb builds...'
-        echo 'Triggering Ubuntu snap builds...'
-        echo 'Triggering CentOS .rpm builds...'
+        unstash 'tarball'
+        echo 'rsyncing tarballs from couchdb-vm2...'
+        echo 'Keeping only last 10 tarballs...'
+        echo 'rsyncing tarballs to couchdb-vm2...'
+        echo 'Building Debian repo...'
+        echo 'Building CentOS repo...'
+        echo 'rsyncing repos to couchdb-vm2...'
         echo 'Cleaning workspace...'
-        sh 'rm -rf * .[a-zA-Z]*'
+        deleteDir()
       }
-    }
-  }
+    } // stage
+  } // stages
 
   post {
     success {
