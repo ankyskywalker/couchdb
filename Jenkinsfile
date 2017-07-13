@@ -56,6 +56,7 @@ pipeline {
        build outside of the workdir should speed up the build process too,
        though it does mean we pollute /tmp whenever a build fails. */
     /* Build packages on supported platforms using esl's erlang */
+/* SPEED RUN
     stage('Test') {
       steps {
         parallel(centos6erlang183: {
@@ -394,10 +395,11 @@ pipeline {
         ) // parallel
       } // steps
     } // stage
+END SPEED RUN */
 
     stage('Publish') {
       when {
-        expression { return env.BRANCH_NAME ==~ /master|2.0.x|2.1.x|jenkins-*/ }
+        expression { return env.BRANCH_NAME ==~ /master|2.0.x|2.1.x|jenkins-.*/ }
       }
       agent {
         docker {
