@@ -53,10 +53,8 @@ pipeline {
        https://issues.jenkins-ci.org/browse/JENKINS-41334 */
     /* The builddir stuff is to prevent all 10 builds from live syncing
        their build results to each other during the build. Moving the
-       build outside of the workdir should speed up the build process too,
-       though it does mean we pollute /tmp whenever a build fails. */
+       build outside of the workdir should speed up the build process, too */
     /* Build packages on supported platforms using esl's erlang */
-/* SPEED RUN
     stage('Test') {
       steps {
         parallel(centos6erlang183: {
@@ -77,7 +75,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
 
                   # Build CouchDB packages
                   cd $builddir
@@ -89,8 +87,8 @@ pipeline {
                   cd ../couchdb-pkg
                   # centos only
                   platform=centos6
-                  make $platform
-                  mkdir -p $cwd/pkgs/$platform
+                  make $platform PLATFORM=$platform
+                  rm -rf $cwd/pkgs/$platform && mkdir -p $cwd/pkgs/$platform
                   # CentOS variant
                   mv ~/rpmbuild/RPMS/x86_64/*rpm $cwd/pkgs/$platform || true
 
@@ -119,7 +117,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
                 '''
               } // withDocker
             } // timeout
@@ -143,7 +141,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
 
                   # Build CouchDB packages
                   cd $builddir
@@ -155,8 +153,8 @@ pipeline {
                   cd ../couchdb-pkg
                   # centos only
                   platform=centos7
-                  make $platform
-                  mkdir -p $cwd/pkgs/$platform
+                  make $platform PLATFORM=$platform
+                  rm -rf $cwd/pkgs/$platform && mkdir -p $cwd/pkgs/$platform
                   # CentOS variant
                   mv ~/rpmbuild/RPMS/x86_64/*rpm $cwd/pkgs/$platform || true
 
@@ -185,7 +183,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
                 '''
               } // withDocker
             } // timeout
@@ -208,7 +206,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
                 '''
               } // withDocker
             } // timeout
@@ -232,7 +230,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
 
                   # Build CouchDB packages
                   cd $builddir
@@ -245,8 +243,8 @@ pipeline {
                   # debian/ubuntu only
                   sudo apt-get install -y libmozjs185-dev
                   platform=$(lsb_release -cs)
-                  make $platform
-                  mkdir -p $cwd/pkgs/$platform
+                  make $platform PLATFORM=$platform
+                  rm -rf $cwd/pkgs/$platform && mkdir -p $cwd/pkgs/$platform
                   # Ubuntu/Debian variant
                   mv ../couchdb/*deb $cwd/pkgs/$platform || true
 
@@ -275,7 +273,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
                 '''
               } // withDocker
             } // timeout
@@ -299,7 +297,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
 
                   # Build CouchDB packages
                   cd $builddir
@@ -312,8 +310,8 @@ pipeline {
                   # debian/ubuntu only
                   sudo apt-get install -y libmozjs185-dev
                   platform=$(lsb_release -cs)
-                  make $platform
-                  mkdir -p $cwd/pkgs/$platform
+                  make $platform PLATFORM=$platform
+                  rm -rf $cwd/pkgs/$platform && mkdir -p $cwd/pkgs/$platform
                   # Ubuntu/Debian variant
                   mv ../couchdb/*deb $cwd/pkgs/$platform || true
 
@@ -342,7 +340,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
                 '''
               } // withDocker
             } // timeout
@@ -366,7 +364,7 @@ pipeline {
                   cd apache-couchdb-*
                   ./configure --with-curl
                   make all
-                  make check || (build-aux/logfile-uploader.py && false)
+                  #make check || (build-aux/logfile-uploader.py && false)
 
                   # Build CouchDB packages
                   cd $builddir
@@ -379,8 +377,8 @@ pipeline {
                   # debian/ubuntu only
                   sudo apt-get install -y libmozjs185-dev
                   platform=$(lsb_release -cs)
-                  make $platform
-                  mkdir -p $cwd/pkgs/$platform
+                  make $platform PLATFORM=$platform
+                  rm -rf $cwd/pkgs/$platform && mkdir -p $cwd/pkgs/$platform
                   # Ubuntu/Debian variant
                   mv ../couchdb/*deb $cwd/pkgs/$platform || true
 
@@ -395,7 +393,6 @@ pipeline {
         ) // parallel
       } // steps
     } // stage
-END SPEED RUN */
 
     stage('Publish') {
       when {
@@ -410,16 +407,44 @@ END SPEED RUN */
         }
       }
       steps {
-        unstash 'tarball'
-        echo 'rsyncing tarballs from couchdb-vm2...'
-        echo 'Keeping only last 10 tarballs...'
-        echo 'rsyncing tarballs to couchdb-vm2...'
-        echo 'Building Debian repo...'
-        echo 'Building CentOS repo...'
-        echo 'rsyncing repos to couchdb-vm2...'
-        echo 'Cleaning workspace...'
-        deleteDir()
-      }
+        ws('workspace/repos') {
+          withCredentials([file(credentialsId: 'jenkins-key', variable: 'KEY')]) {
+            sh 'rm -rf pkgs'
+            unarchive mapping: ['pkgs/' : '.']
+            echo 'Building Debian repo...'
+            sh '''
+              git clone https://github.com/apache/couchdb-pkg
+              reprepro -b couchdb-pkg/repo includedeb jessie pkgs/jessie/*deb
+              reprepro -b couchdb-pkg/repo includedeb trusty pkgs/trusty/*deb
+              reprepro -b couchdb-pkg/repo includedeb xenial pkgs/xenial/*deb
+            '''
+            echo 'Building CentOS repos...'
+            sh '''
+              cd pkgs/centos6 && createrepo --database .
+              cd ../centos7 && rm js* && createrepo --database .
+            '''
+            echo 'rsyncing repos to couchdb-vm2...'
+            sh '''
+              mkdir -p $BRANCH_NAME/debian $BRANCH_NAME/el6 $BRANCH_NAME/el7
+              mv couchdb-pkg/repo/pool $BRANCH_NAME/debian
+              mv couchdb-pkg/repo/dists $BRANCH_NAME/debian
+              mv pkgs/centos6/* $BRANCH_NAME/el6
+              mv pkgs/centos7/* $BRANCH_NAME/el7
+              rsync -avz --delete -e "ssh -i $KEY" $BRANCH_NAME username@couchdb-vm2.apache.org:/var/www/html
+            '''
+            /* cronjob on couchdb-vm2 cleans up old tarballs (keeps latest 10) */
+            echo 'rsyncing source tarball to couchdb-vm2...'
+            unstash 'tarball'
+            sh '''
+              rm -rf $BRANCH_NAME
+              mkdir -p $BRANCH_NAME/source
+              mv apache-couchdb-*.tar.gz $BRANCH_NAME/source
+              rsync -avz -e "ssh -i $KEY" $BRANCH_NAME username@couchdb-vm2.apache.org:/var/www/html
+            '''
+            deleteDir()
+          } // withCredentials
+        } // ws
+      } // steps
     } // stage
   } // stages
 
